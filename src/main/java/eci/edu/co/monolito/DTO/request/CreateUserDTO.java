@@ -10,9 +10,6 @@ import jakarta.validation.constraints.*;
 @NoArgsConstructor
 public class CreateUserDTO {
 
-    // password is optional when creating users via Auth0 token; keep for backward compatibility
-    private String password;
-
     private String name;
 
     @NotBlank(message = "Email is required")

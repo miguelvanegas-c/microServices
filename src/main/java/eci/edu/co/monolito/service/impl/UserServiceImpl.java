@@ -18,83 +18,33 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-
-    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    
     private final UserMapper userMapper;
 
     @Override
     @Transactional
-    public UserDTO createUserFromJwt(CreateUserDTO createUserDTO) {
-        var authentication = getAuthentication();
-        JwtClaims claims = extractClaims(authentication);
-        User existing = findExistingUser(claims.email(), claims.auth0Id());
-        if (existing != null) {
-            return userMapper.toDto(existing);
+    public UserDTO createUser(CreateUserDTO createUserDTO) {
+        if (userRepository.findByEmail(createUserDTO.getEmail()).isPresent()) {
+            throw new UserExceptionBadRequest("Email already registered: " + createUserDTO.getEmail());
         }
-        validateEmailVerified(claims.emailVerified());
-        User user = buildUserFromDtoAndClaims(createUserDTO, claims);
+
+        User user = userMapper.createDtoToUser(createUserDTO);
         User saved = userRepository.save(user);
         return userMapper.toDto(saved);
-    }
-
-    private org.springframework.security.core.Authentication getAuthentication() {
-        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new UserExceptionBadRequest("Not authenticated");
-        }
-        return authentication;
-    }
-
-    private record JwtClaims(String email, String auth0Id, String name, Boolean emailVerified) {}
-
-    private JwtClaims extractClaims(org.springframework.security.core.Authentication authentication) {
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
-            String email = jwt.getClaimAsString("email");
-            String auth0Id = jwt.getSubject();
-            String name = jwt.getClaimAsString("name");
-            Boolean emailVerified = null;
-            Object ev = jwt.getClaims().get("email_verified");
-            if (ev instanceof Boolean) {
-                emailVerified = (Boolean) ev;
-            }
-            if (email == null) {
-                throw new UserExceptionBadRequest("Email claim missing in token");
-            }
-            return new JwtClaims(email, auth0Id, name, emailVerified);
-        }
-        throw new UserExceptionBadRequest("Unsupported authentication principal type");
-    }
-
-    private User findExistingUser(String email, String auth0Id) {
-        if (auth0Id != null && !auth0Id.isBlank()) {
-            var byAuth0 = userRepository.findByAuth0Id(auth0Id).orElse(null);
-            if (byAuth0 != null) return byAuth0;
-        }
-        return userRepository.findByEmail(email).orElse(null);
-    }
-
-    private void validateEmailVerified(Boolean emailVerified) {
-        if (emailVerified != null && !emailVerified) {
-            throw new UserExceptionBadRequest("Email not verified");
-        }
-    }
-
-    private User buildUserFromDtoAndClaims(CreateUserDTO createUserDTO, JwtClaims claims) {
-        User user = userMapper.createDtoToUser(createUserDTO);
-        user.setEmail(claims.email());
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(claims.name());
-        }
-        user.setPassword(null);
-        user.setAuth0Id(claims.auth0Id());
-        return user;
     }
 
     @Override
     @Transactional(readOnly = true)
     public UserDTO getUserById(Long id) {
         User user = userRepository.findById(id).orElseThrow(() -> new UserExceptionNotFound("User not found with id " + id));
+        return userMapper.toDto(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserDTO getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserExceptionNotFound("User not found with email " + email));
         return userMapper.toDto(user);
     }
 
