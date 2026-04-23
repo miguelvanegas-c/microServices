@@ -15,6 +15,8 @@ public class PostDTO {
 
     private Long userId;
 
+    private String userName;
+
     @NotBlank(message = "Title is required")
     private String title;
 

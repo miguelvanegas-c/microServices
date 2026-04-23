@@ -8,6 +8,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface PostMapper {
 
+    @Mapping(target = "userName", source = "user.name")
     @Mapping(target = "userId", source = "user.id")
     PostDTO toDto(Post post);
 

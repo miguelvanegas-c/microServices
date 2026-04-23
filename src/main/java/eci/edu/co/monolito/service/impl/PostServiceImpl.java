@@ -34,7 +34,7 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public PostDTO createPost(PostDTO postDTO) {
         User user = userRepository.findById(postDTO.getUserId())
-                .orElseThrow(() -> new UserExceptionNotFound("User not found with id " + postDTO.getUserId()));
+                .orElseThrow(() -> new UserExceptionNotFound("User not found with name " + postDTO.getUserName()));
         Post post = postMapper.toEntity(postDTO);
         post.setId(UUID.randomUUID().toString());
         post.setCreationDate(LocalDateTime.now());
